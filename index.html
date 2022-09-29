@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Viewer Demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Insert this script -->
+  <style>
+    model-viewer {
+      width: 100%;
+      min-height: 50vh;
+    }
+  </style>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+
+<body>
+  <div class="container mt-5">
+    <div class="row">
+      <div class="col-6">
+        <div class="card  h-100" style="">
+          <div class="card-body">
+            <model-viewer id="shoe" src="Astronaut.glb" ar ar-scale="fixed" camera-controls touch-action="pan-y"
+              alt="A 3D model of an astronaut" skybox-image="aircraft_workshop_01_1k.hdr" ios-src="Astronaut.usdz"
+              xr-environment>
+              <div id="ar-prompt">
+                <img src="https://modelviewer.dev/shared-assets/icons/hand.png">
+              </div>
+              <button slot="ar-button"
+                style="background-color: white; border-radius: 4px; border: none; position: absolute; top: 16px; right: 16px; ">
+                👋 Activate AR
+              </button>
+            </model-viewer>
+          </div>
+        </div>
+
+      </div>
+      <div class="col-6">
+        <div class="card h-100" style="">
+          <div class="card-body">
+            <div class="controls">
+              <div class="mb-3 row">
+                <label for="staticEmail" class="col-sm-3 col-form-label">Variant</label>
+                <div class="col-sm-9">
+                  <select id="variant" class="form-select"></select>
+                </div>
+              </div>
+              <div class="mb-3 row">
+                <label for="staticEmail" class="col-sm-3 col-form-label">Change Color</label>
+                <div class="col-sm-9">
+                  <div id="color-controls">
+                    <button class="btn btn-outline-danger" data-color="1,0,0,1">Red</button>
+                    <button class="btn btn-outline-success" data-color="0,1,0,1">Green</button>
+                    <button class="btn btn-outline-primary" data-color="0,0,1,1">Blue</button>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-3 row">
+                <label for="staticEmail" class="col-sm-3 col-form-label">Metalness: <b id="metalness-value"></b></label>
+                <div class="col-sm-9">
+                  <input id="metalness" class="form-range mt-2" type="range" min="0" max="1" step="0.01" value="0">
+                </div>
+              </div>
+              <div class="mb-3 row">
+                <label for="staticEmail" class="col-sm-3 col-form-label">Roughness <b id="roughness-value"></b></label>
+                <div class="col-sm-9">
+                  <input id="roughness" class="form-range mt-2" type="range" min="0" max="1" step="0.01" value="0">
+                </div>
+              </div>
+              <div class="mb-3 mt-3 row text-center">
+                <div class="col-12">
+                  <button class="btn btn-primary m-auto" onclick="exportGLB()">Export GLB</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.min.js"></script>
+  <script>
+    const modelViewerVariants = document.querySelector("model-viewer#shoe");
+    const select = document.querySelector('#variant');
+
+    modelViewerVariants.addEventListener('load', (ev) => {
+      const names = modelViewerVariants.availableVariants;
+      for (const name of names) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      }
+      // Adds a default option.
+      const option = document.createElement('option');
+      option.value = 'default';
+      option.textContent = 'Default';
+      select.appendChild(option);
+      // metalness code 
+      let material = modelViewerVariants.model.materials[0];
+
+      let metalnessDisplay = document.querySelector("#metalness-value");
+      let roughnessDisplay = document.querySelector("#roughness-value");
+
+      metalnessDisplay.textContent = material.pbrMetallicRoughness.metallicFactor;
+      roughnessDisplay.textContent = material.pbrMetallicRoughness.roughnessFactor;
+
+      // Defaults to gold
+      material.pbrMetallicRoughness.setBaseColorFactor([0.7294, 0.5333, 0.0392]);
+
+      document.querySelector('#metalness').addEventListener('input', (event) => {
+        material.pbrMetallicRoughness.setMetallicFactor(event.target.value);
+        metalnessDisplay.textContent = event.target.value;
+      });
+
+      document.querySelector('#roughness').addEventListener('input', (event) => {
+        material.pbrMetallicRoughness.setRoughnessFactor(event.target.value);
+        roughnessDisplay.textContent = event.target.value;
+      });
+      // metalness code 
+    });
+    select.addEventListener('input', (event) => {
+      modelViewerVariants.variantName = event.target.value === 'default' ? null : event.target.value;
+    });
+    document.querySelector('#color-controls').addEventListener('click', (event) => {
+      console.log('clicked')
+      const colorString = event.target.dataset.color;
+
+      if (!colorString) {
+        return;
+      }
+
+      const color = colorString.split(',')
+        .map(numberString => parseFloat(numberString));
+
+      console.log('Changing color to: ', color);
+      const [material] = modelViewerVariants.model.materials;
+      material.pbrMetallicRoughness.setBaseColorFactor(color);
+    });
+    async function exportGLB() {
+      const glTF = await modelViewerVariants.exportScene();
+      const file = new File([glTF], "export.glb");
+      const link = document.createElement("a");
+      link.download = file.name;
+      link.href = URL.createObjectURL(file);
+      link.click();
+    }
+  </script>
+
+</html>
